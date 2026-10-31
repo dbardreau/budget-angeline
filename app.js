@@ -228,8 +228,8 @@ let editingDate = '';     // date conservée lors d'une édition d'opération im
    une base Supabase, protégée par une connexion (email + mot de
    passe). Toute la synchronisation est asynchrone (Promise).
    ============================================================ */
-const SB_URL = 'https://REMPLACER.supabase.co';
-const SB_KEY = 'REMPLACER_PUBLISHABLE_KEY';
+const SB_URL = 'https://sbrjucfhhqpntxzzughp.supabase.co';
+const SB_KEY = 'sb_publishable_KylF2LlGXtyNIGK-C07mYQ_ZJ4mh4MY';
 
 let userOps = {};
 let online = false;
