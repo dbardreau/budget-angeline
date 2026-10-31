@@ -1,0 +1,20 @@
+# Fichiers de l'ancienne version locale WAMP/MySQL (gardés localement, non publiés)
+api.php
+budget.sql
+.htaccess
+
+# Notes internes (contiennent des identifiants sensibles, jamais publiées)
+INFOS_BUDGET_FOYER.md
+
+# Suivi de session (notes internes locales, jamais publiées)
+SUIVI_SESSION.md
+
+# Relevés et exports bancaires : données personnelles, ne doivent JAMAIS être publiées
+exports/
+*.ofx
+*.qif
+*.csv
+
+# Sauvegardes locales (doublons de data.js)
+*.bak
+*.avant-*

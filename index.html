@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Budget Angéline</title>
+<meta name="color-scheme" content="dark">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-box">
+    <div class="logo">€</div>
+    <h2>Budget Angéline</h2>
+    <p class="login-sub">Connectez-vous pour accéder à vos données</p>
+    <form id="loginForm">
+      <input id="loginEmail" type="email" placeholder="Votre email" autocomplete="username" required>
+      <input id="loginPassword" type="password" placeholder="Mot de passe" autocomplete="current-password" required>
+      <button type="submit" class="btn primary" id="loginBtn">Se connecter</button>
+      <div id="loginError" class="login-error"></div>
+    </form>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">€</div>
+    <div>
+      <h1>Budget Angéline</h1>
+      <span class="subtitle">Gestion des finances · <span id="hdYear">2026</span></span>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="overview">Accueil</button>
+    <button class="tab" data-tab="months">Mois</button>
+    <button class="tab" data-tab="budget">Budget</button>
+    <button class="tab" data-tab="charts">Graphiques</button>
+    <button class="tab" data-tab="categories">Catégories</button>
+  </nav>
+  <div class="actions">
+    <div class="year-nav" title="Changer d'année">
+      <button id="prevYear" class="nav-arrow">‹</button>
+      <span id="yearLabel" class="year-label">2026</span>
+      <button id="nextYear" class="nav-arrow">›</button>
+    </div>
+    <span id="syncBadge" class="sync-badge" title="État du stockage de vos ajouts manuels"></span>
+    <button id="btnSearch" class="btn" title="Rechercher une opération sur vos comptes (libellé, catégorie, montant)">🔍 Rechercher</button>
+    <button id="btnImport" class="btn" title="Importer mes relevés Boursorama (compte commun + Livret) en fin de mois">Importer relevés</button>
+    <button id="btnAdd" class="btn primary">＋ Ajouter une opération</button>
+    <button id="btnLogout" class="btn ghost" title="Se déconnecter">Déconnexion</button>
+  </div>
+</header>
+
+<main class="content">
+
+  <!-- ============ ACCUEIL / VUE D'ENSEMBLE ============ -->
+  <section id="tab-overview" class="panel active">
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <div class="card">
+        <h3>Revenus vs Dépenses (mensuel)</h3>
+        <canvas id="chartRevDep" height="280"></canvas>
+      </div>
+      <div class="card">
+        <h3>Répartition des dépenses <span id="donutYear">2026</span></h3>
+        <div class="donut-wrap">
+          <canvas id="chartDonut" height="280"></canvas>
+          <div class="donut-legend" id="donutLegend"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Top catégories de dépenses (annuelle)</h3>
+      <div id="topCat"></div>
+    </div>
+  </section>
+
+  <!-- ============ MOIS ============ -->
+  <section id="tab-months" class="panel">
+    <div class="month-selector">
+      <button id="prevMonth" class="nav-arrow">‹</button>
+      <h2 id="currentMonthTitle">—</h2>
+      <button id="nextMonth" class="nav-arrow">›</button>
+      <button id="btnClearMonth" class="btn ghost small" title="Supprimer toutes les opérations du mois courant (importées et saisies)">Vider le mois</button>
+    </div>
+
+    <div class="account-bar">
+      <div class="segmented" id="monthAccountSeg">
+        <button type="button" class="seg active" data-account="commun">Compte commun</button>
+        <button type="button" class="seg" data-account="livret">Livret Bourso+</button>
+        <button type="button" class="seg" data-account="tous">Tous les comptes</button>
+      </div>
+    </div>
+    <p class="muted note" id="monthAccountNote" style="text-align:center;margin:0 0 6px"></p>
+
+    <div class="month-kpis" id="monthKpis"></div>
+
+    <div class="card hidden" id="forecastCard">
+      <h3 id="forecastTitle">Prévisionnel de fin de mois</h3>
+      <p class="muted" id="forecastNote"></p>
+      <div class="forecast-head">
+        <div>
+          <div class="label">Déjà encaissé</div>
+          <div class="money pos" id="fcRevReal">—</div>
+        </div>
+        <div>
+          <div class="label">Déjà dépensé</div>
+          <div class="money neg" id="fcDepReal">—</div>
+        </div>
+        <div class="forecast-total">
+          <div class="label">Prévision de fin de mois</div>
+          <div class="val" id="fcTotal">—</div>
+          <div class="sub" id="fcSub"></div>
+        </div>
+      </div>
+      <details class="fc-details">
+        <summary>
+          <span>Détail des postes attendus</span>
+          <span class="fc-sums"><span class="pos" id="fcRevSum"></span><span class="muted"> · </span><span class="neg" id="fcDepSum"></span></span>
+        </summary>
+        <div class="grid2">
+          <div>
+            <h4 class="fc-h">Revenus attendus</h4>
+            <div class="list" id="fcRevList"></div>
+          </div>
+          <div>
+            <h4 class="fc-h">Dépenses attendues</h4>
+            <div class="list" id="fcDepList"></div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3>Revenus</h3>
+      <div id="revenueList" class="list"></div>
+    </div>
+
+    <div class="card">
+      <h3>Dépenses par catégorie</h3>
+      <p class="muted" style="font-size:12px;margin-top:-6px">Cliquez sur une catégorie puis sur une sous-catégorie pour voir et modifier chaque opération.</p>
+      <div id="expenseList" class="cat-list"></div>
+    </div>
+  </section>
+
+  <!-- ============ BUDGET ============ -->
+  <section id="tab-budget" class="panel">
+    <div class="kpis" id="budgetKpis"></div>
+    <div class="card">
+      <div class="month-selector" style="margin-bottom:6px">
+        <button id="prevBudgetMonth" class="nav-arrow">‹</button>
+        <h2 id="budgetMonthTitle" style="font-size:18px">—</h2>
+        <button id="nextBudgetMonth" class="nav-arrow">›</button>
+      </div>
+      <h3 style="margin-top:0">Suivi du mois : où en êtes-vous ?</h3>
+      <p class="muted" style="font-size:13px" id="budgetMonthNote"></p>
+      <div class="kpis" id="budgetMonthKpis"></div>
+      <div class="table-wrap">
+        <table class="table" id="budgetMonthTable">
+          <thead>
+            <tr><th>Catégorie</th><th>Budget / mois</th><th>Dépensé</th><th>Reste</th><th>Utilisé</th><th>Statut</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Budget mensuel automatisé</h3>
+      <p class="muted" style="font-size:13px" id="budgetNote"></p>
+      <div class="table-wrap">
+        <table class="table" id="budgetTable">
+          <thead>
+            <tr><th>Catégorie</th><th>Budget (réf. / mois)</th><th>Réel moyen / mois</th><th>Écart / mois</th><th>Statut</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GRAPHIQUES ============ -->
+  <section id="tab-charts" class="panel">
+    <div class="month-selector">
+      <button id="prevChartMonth" class="nav-arrow">‹</button>
+      <h2 id="chartMonthTitle" style="font-size:18px">—</h2>
+      <button id="nextChartMonth" class="nav-arrow">›</button>
+    </div>
+    <p class="muted note" style="text-align:center;margin:0 0 8px">Le mois choisi s'applique au Sankey et à la comparaison mensuelle ; les autres graphiques portent sur l'année entière.</p>
+
+    <div class="kpis" id="chartKpis"></div>
+
+    <div class="card">
+      <h3>Où va votre argent ?</h3>
+      <div id="chartSankey" class="sankey-wrap"></div>
+      <p class="muted note" id="sankeyNote"></p>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Tendance des dépenses</h3>
+        <canvas id="chartTrend" height="300"></canvas>
+        <p class="muted note">La courbe lissée (moyenne mobile sur 3 mois) gomme les pics ponctuels pour révéler la vraie trajectoire.</p>
+      </div>
+      <div class="card">
+        <h3>Épargne : cumul du foyer et Livret Bourso+</h3>
+        <canvas id="chartSavings" height="300"></canvas>
+        <p class="muted note">La courbe bleue cumule les soldes mensuels du foyer (revenus − dépenses). La courbe verte suit le solde réel du Livret Bourso+, d'après les relevés importés.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 id="vsAvgTitle">Ce mois vs votre moyenne</h3>
+      <div id="chartVsAvg"></div>
+      <p class="muted note" id="vsAvgNote"></p>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Répartition annuelle</h3>
+        <canvas id="chartTreemap" height="330"></canvas>
+        <p class="muted note">Chaque bloc est proportionnel au montant dépensé sur l'année. Les petits postes sont regroupés.</p>
+      </div>
+      <div class="card">
+        <h3>Saisonnalité par catégorie</h3>
+        <div id="chartHeat" class="heat"></div>
+        <p class="muted note">Plus la case est vive, plus vous avez dépensé dans cette catégorie ce mois-là (intensité relative à la catégorie).</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CATEGORIES ============ -->
+  <section id="tab-categories" class="panel">
+    <div class="card">
+      <h3>Gestion des catégories et sous-catégories</h3>
+      <p class="muted" style="font-size:13px">Ajoute ici tes propres catégories de dépenses ou sources de revenus, et des sous-catégories pour mieux détailler. Elles seront proposées dans le formulaire d'ajout d'une opération. Toutes les catégories — standard ou personnalisées — peuvent être supprimées : leurs opérations sont alors regroupées dans la catégorie de ton choix, et une catégorie supprimée peut être restaurée à tout moment.</p>
+      <div class="segmented" id="catModeSeg" style="margin:14px 0">
+        <button type="button" class="seg active" data-catmode="depense">Dépenses</button>
+        <button type="button" class="seg" data-catmode="revenu">Revenus</button>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px">
+        <input id="newCatName" type="text" placeholder="Nom de la nouvelle catégorie de dépense" style="flex:1">
+        <button type="button" id="btnNewCat" class="btn primary">＋ Ajouter</button>
+      </div>
+      <div class="muted" style="font-size:12px;margin-bottom:12px">💡 Quand tu déplaces une sous-catégorie, la règle est <strong>mémorisée</strong> : les prochains exports/imports placeront automatiquement cette sous-catégorie dans la catégorie choisie, sans avoir à tout refaire.</div>
+      <div id="catList"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ MODALE AJOUT ============ -->
+<div id="modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">Ajouter une opération</h3>
+      <button id="modalClose" class="btn ghost">✕</button>
+    </div>
+    <form id="addForm">
+      <div class="field">
+        <label>Compte</label>
+        <div class="segmented" id="formAccountSeg">
+          <button type="button" class="seg active" data-account="commun">Compte commun</button>
+          <button type="button" class="seg" data-account="livret">Livret Bourso+</button>
+        </div>
+        <div class="muted" style="font-size:11px;margin-top:6px">Sur le Livret, le solde affiché se met à jour avec vos saisies, à partir du dernier relevé connu.</div>
+      </div>
+      <div class="field">
+        <label>Type</label>
+        <div class="segmented">
+          <button type="button" class="seg active" data-type="depense">Dépense</button>
+          <button type="button" class="seg" data-type="revenu">Revenu</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="fMois">Mois</label>
+        <select id="fMois"></select>
+      </div>
+      <div class="field">
+        <label for="fCat">Catégorie / source</label>
+        <select id="fCat"></select>
+        <div class="muted" style="font-size:11px;margin-top:6px">Gère tes catégories et sources dans l'onglet « Catégories ».</div>
+      </div>
+      <div class="field">
+        <label for="fSub">Sous-catégorie (optionnel)</label>
+        <select id="fSub"></select>
+      </div>
+      <div class="field">
+        <label for="fLabel">Libellé / détail</label>
+        <input id="fLabel" type="text" placeholder="ex. courses hebdomadaires">
+      </div>
+      <div class="field">
+        <label for="fAmount">Montant (€)</label>
+        <input id="fAmount" type="number" step="0.01" min="0" placeholder="0,00">
+      </div>
+      <div class="field">
+        <label class="hb-check-label" title="Le gros mouvement reste compté dans vos dépenses/revenus, mais ne perturbe pas la comparaison au budget">
+          <input type="checkbox" id="fHorsBudget">
+          <span>Ne pas comptabiliser dans le budget (gros mouvement)</span>
+        </label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" id="formCancel" class="btn ghost">Annuler</button>
+        <button type="submit" class="btn primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODALE IMPORT RELEVÉS BOURSORAMA ============ -->
+<div id="importModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Importer mes relevés Boursorama</h3>
+      <button id="importClose" class="btn ghost">✕</button>
+    </div>
+    <div class="field">
+      <label>Fichiers CSV (compte commun + Livret Bourso+)</label>
+      <input id="importFiles" type="file" accept=".csv,text/csv" multiple>
+      <div class="muted" style="font-size:11px;margin-top:6px">
+        Choisis tes exports « Opérations » Boursorama de fin de mois (séparés par « ; »).
+        Compte commun et Livret peuvent être dans un ou plusieurs fichiers.
+      </div>
+    </div>
+    <div id="importResults" class="import-results">
+      <div class="muted">Choisis ton/tes export(s) puis clique sur « Importer ».</div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" id="importCancel" class="btn ghost">Annuler</button>
+      <button type="button" id="importRun" class="btn primary">Importer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODALE RECHERCHE D'OPÉRATION ============ -->
+<div id="searchModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Rechercher une opération</h3>
+      <button id="searchClose" type="button" class="btn ghost">✕</button>
+    </div>
+    <div class="field">
+      <input id="searchInput" type="search" placeholder="Libellé, catégorie, montant, mois…" autocomplete="off">
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div class="field" style="flex:1;min-width:150px">
+        <label for="searchCompte">Compte</label>
+        <select id="searchCompte">
+          <option value="tous">Tous les comptes</option>
+          <option value="commun">Compte commun</option>
+          <option value="livret">Livret Bourso+</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1;min-width:130px">
+        <label for="searchType">Type</label>
+        <select id="searchType">
+          <option value="tous">Tout</option>
+          <option value="depense">Dépenses</option>
+          <option value="revenu">Revenus</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1;min-width:110px">
+        <label for="searchYear">Année</label>
+        <select id="searchYear"><option value="tous">Toutes</option></select>
+      </div>
+    </div>
+    <div class="muted" id="searchCount" style="font-size:12px;margin:0 0 8px"></div>
+    <div id="searchResults"></div>
+    <div class="modal-foot">
+      <button type="button" id="searchDone" class="btn ghost">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODALE SUPPRESSION CATÉGORIE ============ -->
+<div id="delCatModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="delCatTitle">Supprimer la catégorie</h3>
+      <button id="delCatClose" type="button" class="btn ghost">✕</button>
+    </div>
+    <p class="muted" id="delCatInfo" style="font-size:13px;line-height:1.55"></p>
+    <div class="field">
+      <label for="delCatTarget">Regrouper ses opérations dans…</label>
+      <select id="delCatTarget"></select>
+      <div class="muted" style="font-size:11px;margin-top:6px">Aucune opération n'est effacée : les montants sont simplement rattachés à la catégorie choisie.</div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" id="delCatCancel" class="btn ghost">Annuler</button>
+      <button type="button" id="delCatConfirm" class="btn primary">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+</div>
+
+<script src="data.js"></script>
+<script src="data-epargne.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
