@@ -2915,7 +2915,12 @@ function importBankDate(s){
 }
 function importAccount(label){
   const k = norm(label);
-  return /livret|bourso|epargne/.test(k) ? 'livret' : 'commun';
+  /* Attention : « BoursoBank » est le nom de la banque (compte courant) et non
+     le Livret Bourso+. On ne classe donc en épargne que si le libellé désigne
+     vraiment un livret / une épargne (ou « Bourso+ », nom du livret). */
+  const isLivret = /livret|epargne|ldds?|pel\b|\bcel\b|assurance vie|compte sur livret/.test(k)
+                || /bourso\s*\+/.test(k);
+  return isLivret ? 'livret' : 'commun';
 }
 function importInterne(parent){ return /mouvements internes|virement/.test(norm(parent)); }
 
@@ -3119,6 +3124,33 @@ function saveEpargne(){
   saveKey('epargne_import', epargneImportData);
 }
 
+/* Nettoie un ancien import erroné : avant correctif, un compte dont le libellé
+   était « BoursoBank » pouvait être classé dans le Livret Bourso+ et y laisser
+   toutes les opérations du compte courant. Si un mois du Livret contient
+   exactement les mêmes opérations que celles (re)classées ici dans le compte
+   commun, c'est un doublon : on le retire pour que le Livret reste propre. */
+function purgeDuplicateLivretMonths(ops){
+  const sig = (date, label, amount) => [String(date), norm(label), Math.round(Math.abs(amount)*100)].join('|');
+  const parMois = {};
+  ops.forEach(o=>{
+    if(o.compte!=='commun') return;
+    const k = String(o.year)+'-'+String(o.month-1);
+    (parMois[k] = parMois[k] || []).push(sig(o.date, o.libelle||o.sous||'', o.amount));
+  });
+  for(const y in epargneImportData){
+    for(const mk in epargneImportData[y]){
+      const mi = MONTHS.indexOf(mk); if(mi<0) continue;
+      const fichier = parMois[String(y)+'-'+String(mi)]; if(!fichier) continue;
+      const m = epargneImportData[y][mk];
+      const actuelles = (m && Array.isArray(m.operations)) ? m.operations : [];
+      if(!actuelles.length || actuelles.length !== fichier.length) continue;
+      const a = actuelles.map(o=>sig(o.date, o.label||'', o.montant)).sort().join('\u0001');
+      const b = fichier.slice().sort().join('\u0001');
+      if(a === b) delete epargneImportData[y][mk];
+    }
+  }
+}
+
 /* Traite les fichiers choisis : analyse, reconstruction, mise à jour et sauvegarde. */
 function processImportFiles(fileList){
   const files = Array.prototype.slice.call(fileList||[]);
@@ -3143,6 +3175,8 @@ function processImportFiles(fileList){
     // opérations rejoignent directement la catégorie choisie, la banque ne réécrase pas.
     ops.forEach(o=>{ const t = remapTargetSub(o.sous); if(t) o.parent = t; });
     const { communs, livrets } = rebuildImportedMonths(ops);
+    // Supprime les mois du Livret créés à tort par un ancien import (voir ci-dessus)
+    purgeDuplicateLivretMonths(ops);
     // Opérations individuelles du compte commun (pour l'accordéon détaillé)
     const io = {};
     ops.forEach(o=>{
