@@ -365,6 +365,7 @@ async function initStorage(){
     online = true;
   }catch(e){ online = false; }
   updateSyncBadge();
+  setYearMeta();
 }
 
 /* Opérations d'une année (objet mois -> liste) avec création implicite */
@@ -3182,8 +3183,12 @@ function processImportFiles(fileList){
   Promise.all(readAll).then(sources=>{
     let ops = [];
     const perFile = [];
+    // Choix manuel éventuel du compte cible (détection automatique par défaut)
+    const selCompte = document.getElementById('importCompte');
+    const forceCompte = selCompte ? selCompte.value : 'auto';
     for(const s of sources){
       const fops = importParseFile(s.text);
+      if(forceCompte==='commun' || forceCompte==='livret') fops.forEach(o=>{ o.compte = forceCompte; });
       perFile.push({ name:s.name, count:fops.length });
       ops = ops.concat(fops);
     }
@@ -3269,7 +3274,9 @@ function openImportModal(){
   const m = document.getElementById('importModal');
   const fi = document.getElementById('importFiles');
   const box = document.getElementById('importResults');
+  const sel = document.getElementById('importCompte');
   if(fi) fi.value='';
+  if(sel) sel.value='auto';
   if(box) box.innerHTML = '<div class="muted">Choisis ton/tes export(s) Boursorama puis clique sur « Importer ».</div>';
   if(m) m.classList.remove('hidden');
 }
