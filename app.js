@@ -9,6 +9,20 @@ const MONTHS = ['janvier','fevrier','mars','avril','mai','juin','juillet','aout'
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const MONTHS_SHORT = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
 
+/* Version de l'application : lue dans le paramètre ?v= du <script src="app.js?v=…">.
+   Publier.ps1 met cette valeur à jour à chaque publication, ce qui force le
+   navigateur à recharger les fichiers (sinon il garde l'ancienne version en cache). */
+const APP_VERSION = (function(){
+  const s = document.currentScript;
+  const m = (s && s.src) ? s.src.match(/[?&]v=([^&]+)/) : null;
+  return m ? m[1] : '';
+})();
+function appVersionLabel(){
+  const v = APP_VERSION;
+  const m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(v);
+  return m ? 'version du ' + m[3] + '/' + m[2] + '/' + m[1] + ' à ' + m[4] + 'h' + m[5] : '';
+}
+
 let BASE = Array.isArray(window.BUDGET2026) ? window.BUDGET2026 : [];
 /* Données de base par année : baseData = { "2026": [12 mois], "2027": [...] , … } */
 let baseData = {};
@@ -381,6 +395,7 @@ function setYearMeta(){  const y = String(state.year);
   const el = document.getElementById('yearLabel'); if(el) el.textContent = y;
   const hd = document.getElementById('hdYear');  if(hd) hd.textContent = y;
   const dt = document.getElementById('donutYear'); if(dt) dt.textContent = y;
+  const av = document.getElementById('appVer'); if(av) av.textContent = appVersionLabel();
   document.title = 'Budget Angéline ' + y;
 }
 
@@ -2959,6 +2974,7 @@ function importParseFile(text){
       amount:  parseAmount(c[iAmount]),
       balance: iBalance>=0 ? parseAmount(c[iBalance]) : null,
       compte:  importAccount(iCompte>=0 ? c[iCompte] : ''),
+      compteLabel: (iCompte>=0 ? c[iCompte] : '').trim(),
     });
   }
   return ops;
@@ -3174,6 +3190,13 @@ function processImportFiles(fileList){
     // Applique les règles mémorisées « sous-catégorie → catégorie » : les nouvelles
     // opérations rejoignent directement la catégorie choisie, la banque ne réécrase pas.
     ops.forEach(o=>{ const t = remapTargetSub(o.sous); if(t) o.parent = t; });
+    // Comptes détectés dans le fichier (diagnostic affiché après l'import)
+    const comptesDetectes = {};
+    ops.forEach(o=>{
+      const lib = o.compteLabel || '(sans libellé)';
+      comptesDetectes[lib] = comptesDetectes[lib] || { compte:o.compte, n:0 };
+      comptesDetectes[lib].n++;
+    });
     const { communs, livrets } = rebuildImportedMonths(ops);
     // Supprime les mois du Livret créés à tort par un ancien import (voir ci-dessus)
     purgeDuplicateLivretMonths(ops);
@@ -3199,7 +3222,7 @@ function processImportFiles(fileList){
     saveKey('import', importData);
     saveKey('epargne_import', epargneImportData);
     saveKey('import_ops', importOps);
-    renderImportResults(perFile, communs, livrets);
+    renderImportResults(perFile, communs, livrets, comptesDetectes);
     switchTab(state.tab);
     showToast('Import terminé ✔ (' + ops.length + ' opérations)');
   }).catch(err=>{
@@ -3207,10 +3230,18 @@ function processImportFiles(fileList){
   });
 }
 
-function renderImportResults(perFile, communs, livrets){
+function renderImportResults(perFile, communs, livrets, comptesDetectes){
   const box = document.getElementById('importResults');
   if(!box) return;
   const files = perFile.map(f=>`<div>· ${e(f.name)} — ${f.count} opérations</div>`).join('');
+  let comptesStr = '';
+  if(comptesDetectes){
+    comptesStr = Object.keys(comptesDetectes).map(lib=>{
+      const c = comptesDetectes[lib];
+      const cible = c.compte==='livret' ? 'Livret Bourso+' : 'Compte commun';
+      return `<div class="row"><span>${e(lib)} <span class="muted">(${c.n} opérations)</span></span><span class="muted">→ ${e(cible)}</span></div>`;
+    }).join('');
+  }
   let communsStr = '', livretsStr = '';
   for(const y in communs){
     const list = Object.keys(communs[y]).map(Number).sort((a,b)=>a-b).map(mi=>{
@@ -3229,6 +3260,7 @@ function renderImportResults(perFile, communs, livrets){
   }
   box.innerHTML =
     (files?`<div class="import-files">Fichiers lus :</div>${files}`:'') +
+    (comptesStr?`<div class="import-grp"><b>Comptes détectés dans l'export</b>${comptesStr}</div>`:'') +
     (communsStr?`<div class="import-grp"><b>Compte commun — mois reconstruits</b>${communsStr}</div>`:'<div class="muted">Aucune dépense de compte commun détectée.</div>') +
     (livretsStr?`<div class="import-grp"><b>Livret Bourso+ — mois reconstruits</b>${livretsStr}</div>`:'<div class="muted">Aucune ligne de Livret Bourso+ détectée (exporte ton Livret séparément si besoin).</div>') +
     `<div class="muted" style="font-size:12px;margin-top:10px">Tes ajouts manuels restent intacts (ils s'ajoutent par-dessus).</div>`;
