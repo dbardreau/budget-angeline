@@ -3230,9 +3230,30 @@ function processImportFiles(fileList){
     renderImportResults(perFile, communs, livrets, comptesDetectes);
     switchTab(state.tab);
     showToast('Import terminé ✔ (' + ops.length + ' opérations)');
+    startImportAutoClose(6);
   }).catch(err=>{
     if(results) results.innerHTML = '<div class="neg">Erreur : ' + e(err && err.message ? err.message : 'fichier illisible') + '</div>';
   });
+}
+
+/* Fermeture automatique de la fenêtre d'import une fois l'import réussi. */
+let importAutoCloseTimer = null;
+function stopImportAutoClose(){
+  if(importAutoCloseTimer){ clearInterval(importAutoCloseTimer); importAutoCloseTimer = null; }
+  const note = document.getElementById('importAutoClose');
+  if(note) note.textContent = '';
+}
+function startImportAutoClose(seconds){
+  stopImportAutoClose();
+  const note = document.getElementById('importAutoClose');
+  let left = seconds;
+  const affiche = ()=>{ if(note) note.textContent = 'Cette fenêtre se fermera automatiquement dans ' + left + ' s.'; };
+  affiche();
+  importAutoCloseTimer = setInterval(()=>{
+    left--;
+    if(left <= 0){ stopImportAutoClose(); closeImportModal(); return; }
+    affiche();
+  }, 1000);
 }
 
 function renderImportResults(perFile, communs, livrets, comptesDetectes){
@@ -3277,10 +3298,11 @@ function openImportModal(){
   const sel = document.getElementById('importCompte');
   if(fi) fi.value='';
   if(sel) sel.value='auto';
+  stopImportAutoClose();
   if(box) box.innerHTML = '<div class="muted">Choisis ton/tes export(s) Boursorama puis clique sur « Importer ».</div>';
   if(m) m.classList.remove('hidden');
 }
-function closeImportModal(){ const m=document.getElementById('importModal'); if(m) m.classList.add('hidden'); }
+function closeImportModal(){ stopImportAutoClose(); const m=document.getElementById('importModal'); if(m) m.classList.add('hidden'); }
 function runImportNow(){
   const fi = document.getElementById('importFiles');
   processImportFiles(fi && fi.files);
