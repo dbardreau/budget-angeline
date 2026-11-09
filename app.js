@@ -3230,7 +3230,7 @@ function processImportFiles(fileList){
     renderImportResults(perFile, communs, livrets, comptesDetectes);
     switchTab(state.tab);
     showToast('Import terminé ✔ (' + ops.length + ' opérations)');
-    startImportAutoClose(6);
+    startImportAutoClose(3);
   }).catch(err=>{
     if(results) results.innerHTML = '<div class="neg">Erreur : ' + e(err && err.message ? err.message : 'fichier illisible') + '</div>';
   });
