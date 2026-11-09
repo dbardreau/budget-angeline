@@ -2934,7 +2934,7 @@ function importAccount(label){
   /* Attention : « BoursoBank » est le nom de la banque (compte courant) et non
      le Livret Bourso+. On ne classe donc en épargne que si le libellé désigne
      vraiment un livret / une épargne (ou « Bourso+ », nom du livret). */
-  const isLivret = /livret|epargne|ldds?|pel\b|\bcel\b|assurance vie|compte sur livret/.test(k)
+  const isLivret = /livret|epargne|ldds?|\blep\b|\bpel\b|\bcel\b|assurance vie|compte sur livret/.test(k)
                 || /bourso\s*\+/.test(k);
   return isLivret ? 'livret' : 'commun';
 }
